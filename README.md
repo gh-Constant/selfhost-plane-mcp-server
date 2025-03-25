@@ -1,5 +1,7 @@
 # Plane MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@gh-Constant/plane-mcp-server)](https://smithery.ai/server/@gh-Constant/plane-mcp-server)
+
 An MCP (Model Context Protocol) server that provides tools for AI assistants to interact with the Plane project management platform.
 
 ## Features
@@ -12,6 +14,15 @@ An MCP (Model Context Protocol) server that provides tools for AI assistants to 
 
 ## Setup
 
+### Installing via Smithery
+
+To install plane-mcp-server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@gh-Constant/plane-mcp-server):
+
+```bash
+npx -y @smithery/cli install @gh-Constant/plane-mcp-server --client claude
+```
+
+### Manual Installation
 1. Clone this repository
 2. Install dependencies:
    ```
