@@ -1,0 +1,21 @@
+{
+  "name": "plane-mcp-server",
+  "description": "MCP server for Plane API integration",
+  "build": {
+    "command": "npm run build"
+  },
+  "run": {
+    "command": "node dist/index.js"
+  },
+  "environment": {
+    "PLANE_API_KEY": {
+      "description": "Your Plane API key"
+    },
+    "PLANE_BASE_URL": {
+      "description": "Base URL of your Plane instance"
+    },
+    "PLANE_WORKSPACE_SLUG": {
+      "description": "Your workspace slug in Plane"
+    }
+  }
+} 
