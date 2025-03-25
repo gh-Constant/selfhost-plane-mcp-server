@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import dotenv from "dotenv";
 
-import { PLANE_TOOLS } from "./tools.js";
 import { PlaneApiClient } from "./api.js";
 
 // Load environment variables from .env file
@@ -41,237 +37,256 @@ const planeClient = new PlaneApiClient({
   workspaceSlug: PLANE_WORKSPACE_SLUG,
 });
 
-// Initialize the server with metadata and capabilities
-const server = new Server(
-  {
-    name: "plane-mcp-server",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
+// Initialize the MCP server with metadata
+const server = new McpServer({
+  name: "plane-mcp-server",
+  version: "1.0.0"
+});
+
+// Workspace tools
+server.tool(
+  "list-workspaces",
+  {},
+  async () => {
+    const workspaces = await planeClient.listWorkspaces();
+    return {
+      content: [{ type: "text", text: JSON.stringify(workspaces, null, 2) }]
+    };
   }
 );
 
-// Register handler for listing available tools
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: PLANE_TOOLS,
-}));
-
-// Register handler for calling tools
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  try {
-    const { name, arguments: args = {} } = request.params;
-
-    // Normalize tool name to handle both hyphen and underscore formats
-    const normalizedName = name.replace(/_/g, "-");
-
-    switch (normalizedName) {
-      // Workspace tools
-      case "list-workspaces": {
-        const workspaces = await planeClient.listWorkspaces();
-        return {
-          content: [{ type: "text", text: JSON.stringify(workspaces, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "get-workspace": {
-        const workspace = await planeClient.getWorkspace();
-        return {
-          content: [{ type: "text", text: JSON.stringify(workspace, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // Project tools
-      case "list-projects": {
-        const projects = await planeClient.listProjects();
-        return {
-          content: [{ type: "text", text: JSON.stringify(projects, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "get-project": {
-        if (!args.project_id) {
-          throw new Error("project_id is required");
-        }
-        const project = await planeClient.getProject(args.project_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(project, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // State tools
-      case "get-project-states": {
-        if (!args.project_id) {
-          throw new Error("project_id is required");
-        }
-        const states = await planeClient.getProjectStates(args.project_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(states, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // Cycle tools
-      case "list-cycles": {
-        if (!args.project_id) {
-          throw new Error("project_id is required");
-        }
-        const cycles = await planeClient.listCycles(args.project_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(cycles, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "get-cycle": {
-        if (!args.project_id || !args.cycle_id) {
-          throw new Error("project_id and cycle_id are required");
-        }
-        const cycle = await planeClient.getCycle(args.project_id, args.cycle_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(cycle, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // Module tools
-      case "list-modules": {
-        if (!args.project_id) {
-          throw new Error("project_id is required");
-        }
-        const modules = await planeClient.listModules(args.project_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(modules, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "get-module": {
-        if (!args.project_id || !args.module_id) {
-          throw new Error("project_id and module_id are required");
-        }
-        const module = await planeClient.getModule(args.project_id, args.module_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(module, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // Issue tools
-      case "list-issues": {
-        if (!args.project_id) {
-          throw new Error("project_id is required");
-        }
-        
-        // Extract filter parameters
-        const { project_id, ...filters } = args;
-        const issues = await planeClient.listIssues(project_id, filters);
-        return {
-          content: [{ type: "text", text: JSON.stringify(issues, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "get-issue": {
-        if (!args.project_id || !args.issue_id) {
-          throw new Error("project_id and issue_id are required");
-        }
-        const issue = await planeClient.getIssue(args.project_id, args.issue_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(issue, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "create-issue": {
-        if (!args.project_id || !args.name) {
-          throw new Error("project_id and name are required");
-        }
-        
-        // Extract issue data
-        const { project_id, ...issueData } = args;
-        const newIssue = await planeClient.createIssue(project_id, issueData);
-        return {
-          content: [{ type: "text", text: JSON.stringify(newIssue, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "update-issue": {
-        if (!args.project_id || !args.issue_id) {
-          throw new Error("project_id and issue_id are required");
-        }
-        
-        // Extract update data
-        const { project_id, issue_id, ...updateData } = args;
-        const updatedIssue = await planeClient.updateIssue(project_id, issue_id, updateData);
-        return {
-          content: [{ type: "text", text: JSON.stringify(updatedIssue, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "delete-issue": {
-        if (!args.project_id || !args.issue_id) {
-          throw new Error("project_id and issue_id are required");
-        }
-        const result = await planeClient.deleteIssue(args.project_id, args.issue_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          isError: false,
-        };
-      }
-
-      // Comment tools
-      case "list-issue-comments": {
-        if (!args.project_id || !args.issue_id) {
-          throw new Error("project_id and issue_id are required");
-        }
-        const comments = await planeClient.listIssueComments(args.project_id, args.issue_id);
-        return {
-          content: [{ type: "text", text: JSON.stringify(comments, null, 2) }],
-          isError: false,
-        };
-      }
-
-      case "add-issue-comment": {
-        if (!args.project_id || !args.issue_id || !args.comment_html) {
-          throw new Error("project_id, issue_id, and comment_html are required");
-        }
-        const commentData = { comment_html: args.comment_html };
-        const comment = await planeClient.addIssueComment(args.project_id, args.issue_id, commentData);
-        return {
-          content: [{ type: "text", text: JSON.stringify(comment, null, 2) }],
-          isError: false,
-        };
-      }
-
-      default:
-        return {
-          content: [{ type: "text", text: `Unknown tool: ${name}` }],
-          isError: true,
-        };
-    }
-  } catch (error) {
-    // Handle any errors that occur during API calls
-    console.error("Error:", error);
+server.tool(
+  "get-workspace",
+  {},
+  async () => {
+    const workspace = await planeClient.getWorkspace();
     return {
-      content: [
-        {
-          type: "text",
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ],
-      isError: true,
+      content: [{ type: "text", text: JSON.stringify(workspace, null, 2) }]
     };
   }
-});
+);
+
+// Project tools
+server.tool(
+  "list-projects",
+  {},
+  async () => {
+    const projects = await planeClient.listProjects();
+    return {
+      content: [{ type: "text", text: JSON.stringify(projects, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "get-project",
+  {
+    project_id: z.string().describe("ID of the project to retrieve")
+  },
+  async ({ project_id }) => {
+    const project = await planeClient.getProject(project_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(project, null, 2) }]
+    };
+  }
+);
+
+// State tools
+server.tool(
+  "get-project-states",
+  {
+    project_id: z.string().describe("ID of the project to get states from")
+  },
+  async ({ project_id }) => {
+    const states = await planeClient.getProjectStates(project_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(states, null, 2) }]
+    };
+  }
+);
+
+// Cycle tools
+server.tool(
+  "list-cycles",
+  {
+    project_id: z.string().describe("ID of the project to get cycles from")
+  },
+  async ({ project_id }) => {
+    const cycles = await planeClient.listCycles(project_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(cycles, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "get-cycle",
+  {
+    project_id: z.string().describe("ID of the project containing the cycle"),
+    cycle_id: z.string().describe("ID of the cycle to retrieve")
+  },
+  async ({ project_id, cycle_id }) => {
+    const cycle = await planeClient.getCycle(project_id, cycle_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(cycle, null, 2) }]
+    };
+  }
+);
+
+// Module tools
+server.tool(
+  "list-modules",
+  {
+    project_id: z.string().describe("ID of the project to get modules from")
+  },
+  async ({ project_id }) => {
+    const modules = await planeClient.listModules(project_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(modules, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "get-module",
+  {
+    project_id: z.string().describe("ID of the project containing the module"),
+    module_id: z.string().describe("ID of the module to retrieve")
+  },
+  async ({ project_id, module_id }) => {
+    const module = await planeClient.getModule(project_id, module_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(module, null, 2) }]
+    };
+  }
+);
+
+// Issue tools
+server.tool(
+  "list-issues",
+  {
+    project_id: z.string().describe("ID of the project to get issues from"),
+    state_id: z.string().optional().describe("Filter by state ID (optional)"),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).optional().describe("Filter by priority (optional)"),
+    cycle_id: z.string().optional().describe("Filter by cycle ID (optional)"),
+    module_id: z.string().optional().describe("Filter by module ID (optional)"),
+    assignee_id: z.string().optional().describe("Filter by assignee ID (optional)"),
+    created_by: z.string().optional().describe("Filter by creator ID (optional)"),
+    search: z.string().optional().describe("Search term to filter issues (optional)"),
+    limit: z.number().optional().describe("Maximum number of issues to return (default: 50)")
+  },
+  async (args) => {
+    const { project_id, ...filters } = args;
+    const issues = await planeClient.listIssues(project_id, filters);
+    return {
+      content: [{ type: "text", text: JSON.stringify(issues, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "get-issue",
+  {
+    project_id: z.string().describe("ID of the project containing the issue"),
+    issue_id: z.string().describe("ID of the issue to retrieve")
+  },
+  async ({ project_id, issue_id }) => {
+    const issue = await planeClient.getIssue(project_id, issue_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(issue, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "create-issue",
+  {
+    project_id: z.string().describe("ID of the project where the issue should be created"),
+    name: z.string().describe("Title of the issue"),
+    description_html: z.string().optional().describe("HTML description of the issue"),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).optional().describe("Priority of the issue"),
+    state_id: z.string().optional().describe("ID of the state for this issue (optional)"),
+    assignees: z.array(z.string()).optional().describe("Array of user IDs to assign to this issue (optional)"),
+    cycle_id: z.string().optional().describe("ID of the cycle to associate with this issue (optional)"),
+    module_id: z.string().optional().describe("ID of the module to associate with this issue (optional)"),
+    labels: z.array(z.string()).optional().describe("Array of label IDs to add to this issue (optional)")
+  },
+  async (args) => {
+    const { project_id, ...issueData } = args;
+    const newIssue = await planeClient.createIssue(project_id, issueData);
+    return {
+      content: [{ type: "text", text: JSON.stringify(newIssue, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "update-issue",
+  {
+    project_id: z.string().describe("ID of the project containing the issue"),
+    issue_id: z.string().describe("ID of the issue to update"),
+    name: z.string().optional().describe("Updated title of the issue (optional)"),
+    description_html: z.string().optional().describe("Updated HTML description of the issue (optional)"),
+    priority: z.enum(["urgent", "high", "medium", "low", "none"]).optional().describe("Updated priority of the issue (optional)"),
+    state_id: z.string().optional().describe("Updated state ID of the issue (optional)"),
+    assignees: z.array(z.string()).optional().describe("Updated array of user IDs to assign to this issue (optional)"),
+    cycle_id: z.string().optional().describe("Updated cycle ID for this issue (optional)"),
+    module_id: z.string().optional().describe("Updated module ID for this issue (optional)"),
+    labels: z.array(z.string()).optional().describe("Updated array of label IDs for this issue (optional)")
+  },
+  async (args) => {
+    const { project_id, issue_id, ...updateData } = args;
+    const updatedIssue = await planeClient.updateIssue(project_id, issue_id, updateData);
+    return {
+      content: [{ type: "text", text: JSON.stringify(updatedIssue, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "delete-issue",
+  {
+    project_id: z.string().describe("ID of the project containing the issue"),
+    issue_id: z.string().describe("ID of the issue to delete")
+  },
+  async ({ project_id, issue_id }) => {
+    const result = await planeClient.deleteIssue(project_id, issue_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
+    };
+  }
+);
+
+// Comment tools
+server.tool(
+  "list-issue-comments",
+  {
+    project_id: z.string().describe("ID of the project containing the issue"),
+    issue_id: z.string().describe("ID of the issue to get comments from")
+  },
+  async ({ project_id, issue_id }) => {
+    const comments = await planeClient.listIssueComments(project_id, issue_id);
+    return {
+      content: [{ type: "text", text: JSON.stringify(comments, null, 2) }]
+    };
+  }
+);
+
+server.tool(
+  "add-issue-comment",
+  {
+    project_id: z.string().describe("ID of the project containing the issue"),
+    issue_id: z.string().describe("ID of the issue to add comment to"),
+    comment_html: z.string().describe("HTML content of the comment")
+  },
+  async ({ project_id, issue_id, comment_html }) => {
+    const commentData = { comment_html };
+    const comment = await planeClient.addIssueComment(project_id, issue_id, commentData);
+    return {
+      content: [{ type: "text", text: JSON.stringify(comment, null, 2) }]
+    };
+  }
+);
 
 /**
  * Initializes and runs the MCP server using stdio for communication
