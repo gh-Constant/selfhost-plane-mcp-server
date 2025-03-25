@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+      "plane-mcp-server": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@smithery/cli@latest",
+          "run",
+          "@gh-Constant/plane-mcp-server",
+          "--config",
+          "{\"planeApiKey\":\"plane_api_9d57c9507a77450fa2f1e3b8c2dd98ca\",\"planeBaseUrl\":\"https://plane.chronosync.constantsuchet.fr\",\"planeWorkspaceSlug\":\"chronosync\"}"
+        ]
+      }
+    }
+  }

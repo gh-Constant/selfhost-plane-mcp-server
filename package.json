@@ -1,7 +1,7 @@
 {
-  "name": "plane-mcp-server",
+  "name": "@gh-constant/plane-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Plane API integration",
+  "description": "Plane MCP Server for Cursor",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -30,5 +30,14 @@
     "@types/node": "^20.10.5",
     "@types/ws": "^8.5.10",
     "typescript": "^5.3.3"
+  },
+  "bin": {
+    "plane-mcp-server": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 } 

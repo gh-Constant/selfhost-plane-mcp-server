@@ -212,8 +212,8 @@ function createServer() {
     {
       project_id: z.string().describe("ID of the project where the issue should be created"),
       name: z.string().describe("Title of the issue"),
-      description_html: z.string().optional().describe("HTML description of the issue"),
-      priority: z.enum(["urgent", "high", "medium", "low", "none"]).optional().describe("Priority of the issue"),
+      description_html: z.string().describe("HTML description of the issue"),
+      priority: z.enum(["urgent", "high", "medium", "low", "none"]).describe("Priority of the issue"),
       state_id: z.string().optional().describe("ID of the state for this issue (optional)"),
       assignees: z.array(z.string()).optional().describe("Array of user IDs to assign to this issue (optional)"),
       cycle_id: z.string().optional().describe("ID of the cycle to associate with this issue (optional)"),
@@ -222,9 +222,9 @@ function createServer() {
     },
     async (args) => {
       const { project_id, ...issueData } = args;
-      const newIssue = await getClient().createIssue(project_id, issueData);
+      const issue = await getClient().createIssue(project_id, issueData);
       return {
-        content: [{ type: "text", text: JSON.stringify(newIssue, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(issue, null, 2) }]
       };
     }
   );
